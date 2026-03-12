@@ -1,0 +1,19 @@
+{
+  "name": "persistent-memory-api",
+  "version": "1.0.0",
+  "description": "Persistent memory API for Dotun's AI assistant",
+  "main": "api/remember.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "keywords": [],
+  "author": "Dotun",
+  "license": "ISC",
+  "dependencies": {
+    "pg": "^8.10.0"
+  },
+  "devDependencies": {
+    "vercel": "^32.0.0"
+  }
+}
