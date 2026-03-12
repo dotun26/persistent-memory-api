@@ -1,9 +1,9 @@
 {
   "version": 2,
-  "env": [
-    "DATABASE_URL",
-    "MEMORY_API_KEY"
-  ],
+  "env": {
+    "DATABASE_URL": "@database_url",
+    "MEMORY_API_KEY": "@memory_api_key"
+  },
   "builds": [
     {
       "src": "api/**/*.js",
