@@ -1,19 +1,17 @@
 {
   "name": "persistent-memory-api",
   "version": "1.0.0",
-  "description": "Persistent memory API for Dotun's AI assistant",
+  "description": "Persistent Memory API for OpenClaw agents, deployed on Vercel with Neon.",
   "main": "api/remember.js",
   "scripts": {
-    "dev": "vercel dev",
-    "deploy": "vercel --prod"
+    "start": "vercel dev"
   },
-  "keywords": [],
-  "author": "Dotun",
-  "license": "ISC",
   "dependencies": {
-    "pg": "^8.10.0"
+    "@neondatabase/serverless": "^0.9.1"
   },
   "devDependencies": {
-    "vercel": "^32.0.0"
-  }
+    "vercel": "^33.6.2"
+  },
+  "author": "Dotun",
+  "license": "MIT"
 }

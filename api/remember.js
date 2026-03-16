@@ -1,71 +1,62 @@
-const db = require('../lib/db');
+const { getDb } = require('../lib/db');
+const { authenticate } = require('../lib/auth');
 
-module.exports = async (req, res) => {
-  // Only allow POST and GET requests
-  if (req.method !== 'POST' && req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  // Verify the API key for security
-  const apiKey = req.headers['x-api-key'];
-  if (apiKey !== process.env.MEMORY_API_KEY) {
+module.exports = async function handler(req, res) {
+  if (!authenticate(req)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  try {
-    if (req.method === 'POST') {
-      // Store a new memory
-      const { session_id, role, content, message_type } = req.body;
+  // POST /api/remember — store a memory
+  if (req.method === 'POST') {
+    const { session_id, role, content, message_type = 'text' } = req.body || {};
 
-      if (!session_id || !role || !content) {
-        return res.status(400).json({
-          error: 'Missing required fields: session_id, role, content',
-        });
-      }
-
-      const result = await db.query(
-        `INSERT INTO memories (session_id, role, content, message_type, created_at)
-         VALUES ($1, $2, $3, $4, NOW())
-         RETURNING id, created_at`,
-        [session_id, role, content, message_type || 'text']
-      );
-
-      return res.status(201).json({
-        success: true,
-        memory: result.rows[0],
+    if (!session_id || !role || !content) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: session_id, role, content',
       });
     }
 
-    if (req.method === 'GET') {
-      // Retrieve memories for a session
-      const { session_id, limit = 50, offset = 0 } = req.query;
-
-      if (!session_id) {
-        return res.status(400).json({
-          error: 'Missing required query parameter: session_id',
-        });
-      }
-
-      const result = await db.query(
-        `SELECT id, session_id, role, content, message_type, created_at
-         FROM memories
-         WHERE session_id = $1
-         ORDER BY created_at DESC
-         LIMIT $2 OFFSET $3`,
-        [session_id, limit, offset]
-      );
-
-      return res.status(200).json({
-        success: true,
-        memories: result.rows,
-        count: result.rows.length,
-      });
+    try {
+      const sql = getDb();
+      const result = await sql`
+        INSERT INTO memories (session_id, role, content, message_type)
+        VALUES (${session_id}, ${role}, ${content}, ${message_type})
+        RETURNING id, created_at
+      `;
+      return res.status(201).json({ success: true, memory: result[0] });
+    } catch (err) {
+      console.error('DB error (POST):', err);
+      return res.status(500).json({ success: false, error: 'Internal server error', details: err.message });
     }
-  } catch (error) {
-    console.error('Error:', error.message);
-    return res.status(500).json({
-      error: 'Internal server error',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
-    });
   }
+
+  // GET /api/remember — retrieve memories for a session
+  if (req.method === 'GET') {
+    const { session_id, limit = 50, offset = 0 } = req.query;
+
+    if (!session_id) {
+      return res.status(400).json({ success: false, error: 'Missing required parameter: session_id' });
+    }
+
+    const cap = Math.min(parseInt(limit, 10) || 50, 100);
+    const off = parseInt(offset, 10) || 0;
+
+    try {
+      const sql = getDb();
+      const memories = await sql`
+        SELECT id, session_id, role, content, message_type, created_at
+        FROM memories
+        WHERE session_id = ${session_id}
+        ORDER BY created_at DESC
+        LIMIT ${cap} OFFSET ${off}
+      `;
+      return res.status(200).json({ success: true, memories, count: memories.length });
+    } catch (err) {
+      console.error('DB error (GET):', err);
+      return res.status(500).json({ success: false, error: 'Internal server error', details: err.message });
+    }
+  }
+
+  return res.status(405).json({ error: 'Method not allowed' });
 };
